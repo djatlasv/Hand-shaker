@@ -8,6 +8,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -475,7 +476,15 @@ public class PluginProtocolHandler {
 
         // Try Floodgate API first
         try {
-            Class<?> floodgateApiClass = Class.forName("org.geysermc.floodgate.api.FloodgateApi");
+            Plugin floodgate = Bukkit.getPluginManager().getPlugin("floodgate");
+            if (floodgate == null || !floodgate.isEnabled()) {
+                floodgate = Bukkit.getPluginManager().getPlugin("Floodgate");
+            }
+            ClassLoader floodgateClassLoader = floodgate != null
+                    ? floodgate.getClass().getClassLoader()
+                    : PluginProtocolHandler.class.getClassLoader();
+
+            Class<?> floodgateApiClass = Class.forName("org.geysermc.floodgate.api.FloodgateApi", true, floodgateClassLoader);
             Object api = floodgateApiClass.getMethod("getInstance").invoke(null);
             boolean isFloodgate = (boolean) floodgateApiClass.getMethod("isFloodgatePlayer", UUID.class)
                     .invoke(api, playerUuid);
@@ -490,7 +499,15 @@ public class PluginProtocolHandler {
 
         // Try Geyser API
         try {
-            Class<?> geyserApiClass = Class.forName("org.geysermc.geyser.api.GeyserApi");
+            Plugin geyser = Bukkit.getPluginManager().getPlugin("Geyser-Spigot");
+            if (geyser == null || !geyser.isEnabled()) {
+                geyser = Bukkit.getPluginManager().getPlugin("Geyser");
+            }
+            ClassLoader geyserClassLoader = geyser != null
+                    ? geyser.getClass().getClassLoader()
+                    : PluginProtocolHandler.class.getClassLoader();
+
+            Class<?> geyserApiClass = Class.forName("org.geysermc.geyser.api.GeyserApi", true, geyserClassLoader);
             Object geyserApi = geyserApiClass.getMethod("api").invoke(null);
 
             if (geyserApi != null) {
@@ -502,6 +519,11 @@ public class PluginProtocolHandler {
             // Geyser not installed
         } catch (Exception e) {
             logger.warning("Error checking Geyser for " + player.getName() + ": " + e.getMessage());
+        }
+
+        // Fallback for common Floodgate UUID style used by Bedrock players
+        if (playerUuid.version() == 0) {
+            return true;
         }
 
         return false;

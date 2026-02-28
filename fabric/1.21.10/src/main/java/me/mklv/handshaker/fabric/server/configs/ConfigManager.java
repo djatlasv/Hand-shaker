@@ -763,6 +763,10 @@ public class ConfigManager {
     }
     
     public void checkPlayer(net.minecraft.server.network.ServerPlayerEntity player, HandShakerServer.ClientInfo info, boolean executeActions) {
+        if (allowBedrockPlayers && isBedrockPlayer(player.getUuid())) {
+            return;
+        }
+
         // Check for bypass permission - allows players to bypass all mod checks
         if (PermissionsAdapter.checkPermission(player, "handshaker.bypass")) {
             return;
@@ -932,11 +936,23 @@ public class ConfigManager {
                                 }
                             }
                         }
+
                     }
                 }
             }
         }
         }
+    }
+
+    private boolean isBedrockPlayer(UUID playerUuid) {
+        try {
+            Class<?> floodgateApiClass = Class.forName("org.geysermc.floodgate.api.FloodgateApi");
+            Object api = floodgateApiClass.getMethod("getInstance").invoke(null);
+            return (boolean) floodgateApiClass.getMethod("isFloodgatePlayer", UUID.class).invoke(api, playerUuid);
+        } catch (Throwable ignored) {
+        }
+
+        return playerUuid.version() == 0;
     }
 
     public void playerLeft(ServerPlayerEntity player) {

@@ -683,6 +683,10 @@ public class BlacklistConfig {
     }
 
     public void checkPlayer(net.minecraft.server.level.ServerPlayer player, HandShakerServerMod.ClientInfo info) {
+        if (allowBedrockPlayers && isBedrockPlayer(player.getUUID())) {
+            return;
+        }
+
         boolean hasMod = info != null && !info.mods().isEmpty();
         
         // Integrity Check - if mode is SIGNED, enforce signature verification
@@ -744,5 +748,16 @@ public class BlacklistConfig {
             String msg = kickMessage.replace("{mod}", String.join(", ", blacklistedFound));
             player.connection.disconnect(net.minecraft.network.chat.Component.literal(msg));
         }
+    }
+
+    private boolean isBedrockPlayer(UUID playerUuid) {
+        try {
+            Class<?> floodgateApiClass = Class.forName("org.geysermc.floodgate.api.FloodgateApi");
+            Object api = floodgateApiClass.getMethod("getInstance").invoke(null);
+            return (boolean) floodgateApiClass.getMethod("isFloodgatePlayer", UUID.class).invoke(api, playerUuid);
+        } catch (Throwable ignored) {
+        }
+
+        return playerUuid.version() == 0;
     }
 }
