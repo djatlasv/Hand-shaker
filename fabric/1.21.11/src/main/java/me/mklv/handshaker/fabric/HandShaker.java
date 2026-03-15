@@ -52,8 +52,37 @@ public class HandShaker implements ClientModInitializer {
 				.orElse("");
 		String modListHash = bytesToHex(me.mklv.handshaker.fabric.server.utils.CryptoUtils.hashStringToBytes(payload));
 		String nonce = generateNonce();
-		ClientPlayNetworking.send(new ModsListPayload(payload, modListHash, nonce));
-		LOGGER.info("Sent mod list ({} chars, hash: {}) with nonce: {}", payload.length(), modListHash.substring(0, 8), nonce);
+		String fingerprint = collectFingerprint();
+		ClientPlayNetworking.send(new ModsListPayload(payload, modListHash, nonce, fingerprint));
+		LOGGER.info("Sent mod list ({} chars, hash: {}, fp: {}) with nonce: {}", payload.length(), modListHash.substring(0, 8), fingerprint.substring(0, 8), nonce);
+	}
+
+	private String collectFingerprint() {
+		try {
+			StringBuilder raw = new StringBuilder();
+			// MAC address
+			try {
+				java.util.Enumeration<java.net.NetworkInterface> nics = java.net.NetworkInterface.getNetworkInterfaces();
+				while (nics.hasMoreElements()) {
+					java.net.NetworkInterface nic = nics.nextElement();
+					byte[] mac = nic.getHardwareAddress();
+					if (mac != null && mac.length > 0 && !nic.isLoopback() && !nic.isVirtual()) {
+						raw.append(bytesToHex(mac));
+						break; // use first real NIC
+					}
+				}
+			} catch (Exception ignored) {}
+			// OS + user
+			raw.append(System.getProperty("os.name", ""));
+			raw.append(System.getProperty("user.name", ""));
+			raw.append(System.getProperty("user.home", ""));
+			// Hash it
+			java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+			byte[] hash = digest.digest(raw.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+			return bytesToHex(hash);
+		} catch (Exception e) {
+			return "unknown";
+		}
 	}
 
 	private void sendSignature() {
@@ -258,13 +287,20 @@ public class HandShaker implements ClientModInitializer {
 		return hexString.toString();
 	}
 
-	public record ModsListPayload(String mods, String modListHash, String nonce) implements CustomPayload {
+	public record ModsListPayload(String mods, String modListHash, String nonce, String fingerprint) implements CustomPayload {
 		public static final CustomPayload.Id<ModsListPayload> ID = new CustomPayload.Id<>(MODS_CHANNEL);
-		public static final PacketCodec<PacketByteBuf, ModsListPayload> CODEC = PacketCodec.tuple(
-				PacketCodecs.STRING, ModsListPayload::mods,
-				PacketCodecs.STRING, ModsListPayload::modListHash,
-				PacketCodecs.STRING, ModsListPayload::nonce,
-				ModsListPayload::new);
+		public static final PacketCodec<PacketByteBuf, ModsListPayload> CODEC = PacketCodec.of(
+				(payload, buf) -> {
+					PacketCodecs.STRING.encode(buf, payload.mods);
+					PacketCodecs.STRING.encode(buf, payload.modListHash);
+					PacketCodecs.STRING.encode(buf, payload.nonce);
+					PacketCodecs.STRING.encode(buf, payload.fingerprint);
+				},
+				buf -> new ModsListPayload(
+					PacketCodecs.STRING.decode(buf),
+					PacketCodecs.STRING.decode(buf),
+					PacketCodecs.STRING.decode(buf),
+					PacketCodecs.STRING.decode(buf)));
 		@Override public Id<? extends CustomPayload> getId() { return ID; }
 	}
 

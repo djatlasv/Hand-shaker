@@ -346,13 +346,20 @@ public class HandShakerServerMod {
         return false;
     }
 
-    public record ModsListPayload(String mods, String modListHash, String nonce) implements CustomPacketPayload {
+    public record ModsListPayload(String mods, String modListHash, String nonce, String fingerprint) implements CustomPacketPayload {
         public static final CustomPacketPayload.Type<ModsListPayload> TYPE = new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath("hand-shaker", "mods"));
-        public static final StreamCodec<ByteBuf, ModsListPayload> CODEC = StreamCodec.composite(
-                ByteBufCodecs.STRING_UTF8, ModsListPayload::mods,
-                ByteBufCodecs.STRING_UTF8, ModsListPayload::modListHash,
-                ByteBufCodecs.STRING_UTF8, ModsListPayload::nonce,
-                ModsListPayload::new);
+        public static final StreamCodec<ByteBuf, ModsListPayload> CODEC = StreamCodec.of(
+                (buf, payload) -> {
+                    ByteBufCodecs.STRING_UTF8.encode(buf, payload.mods);
+                    ByteBufCodecs.STRING_UTF8.encode(buf, payload.modListHash);
+                    ByteBufCodecs.STRING_UTF8.encode(buf, payload.nonce);
+                    ByteBufCodecs.STRING_UTF8.encode(buf, payload.fingerprint);
+                },
+                buf -> new ModsListPayload(
+                    ByteBufCodecs.STRING_UTF8.decode(buf),
+                    ByteBufCodecs.STRING_UTF8.decode(buf),
+                    ByteBufCodecs.STRING_UTF8.decode(buf),
+                    ByteBufCodecs.STRING_UTF8.decode(buf)));
         @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }
 

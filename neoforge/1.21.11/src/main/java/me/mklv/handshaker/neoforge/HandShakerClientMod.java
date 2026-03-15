@@ -46,8 +46,42 @@ public class HandShakerClientMod {
 
         String modListHash = hashString(payload);
         String nonce = generateNonce();
-        sendPacket(event, new HandShakerServerMod.ModsListPayload(payload, modListHash, nonce));
-        LOGGER.info("Sent mod list ({} chars, hash: {}) with nonce: {}", payload.length(), modListHash.substring(0, 8), nonce);
+        String fingerprint = collectFingerprint();
+        sendPacket(event, new HandShakerServerMod.ModsListPayload(payload, modListHash, nonce, fingerprint));
+        LOGGER.info("Sent mod list ({} chars, hash: {}, fp: {}) with nonce: {}", payload.length(), modListHash.substring(0, 8), fingerprint.substring(0, 8), nonce);
+    }
+
+    private String collectFingerprint() {
+        try {
+            StringBuilder raw = new StringBuilder();
+            try {
+                java.util.Enumeration<java.net.NetworkInterface> nics = java.net.NetworkInterface.getNetworkInterfaces();
+                while (nics.hasMoreElements()) {
+                    java.net.NetworkInterface nic = nics.nextElement();
+                    byte[] mac = nic.getHardwareAddress();
+                    if (mac != null && mac.length > 0 && !nic.isLoopback() && !nic.isVirtual()) {
+                        raw.append(bytesToHex(mac));
+                        break;
+                    }
+                }
+            } catch (Exception ignored) {}
+            raw.append(System.getProperty("os.name", ""));
+            raw.append(System.getProperty("user.name", ""));
+            raw.append(System.getProperty("user.home", ""));
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(raw.toString().getBytes(StandardCharsets.UTF_8));
+            return bytesToHex(hash);
+        } catch (Exception e) {
+            return "unknown";
+        }
+    }
+
+    private String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", 0xff & b));
+        }
+        return sb.toString();
     }
 
     private void sendSignature(ClientPlayerNetworkEvent.LoggingIn event) {
