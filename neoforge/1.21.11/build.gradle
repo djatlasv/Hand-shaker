@@ -85,10 +85,14 @@ tasks.named('processResources') {
 }
 
 tasks.register('copyCert') {
-    def certDir = rootProject.projectDir
+    def certFile = new File(rootProject.projectDir, '.Integrity/public.cer')
     doLast {
+        if (!certFile.exists()) {
+            println "--> public.cer not found. Skipping cert copy for neoforge:1.21.11."
+            return
+        }
         copy {
-            from "${certDir}/.Integrity/public.cer"
+            from certFile
             into "src/main/resources"
         }
     }
@@ -99,12 +103,17 @@ processResources.dependsOn copyCert
 tasks.named('jar') {
     def keystoreDir = rootProject.projectDir
     doLast {
+        def keystoreFile = new File("${keystoreDir}/.Integrity/keystore.jks")
+        if (!keystoreFile.exists()) {
+            println "--> Keystore not found. Skipping JAR signing for neoforge:1.21.11."
+            return
+        }
         println "Signing jar: ${archiveFile.get().asFile.absolutePath}"
-        
+
         // Load .env file from root project directory
         def envFile = rootProject.file('.env')
         def keystorePassword = null
-        
+
         if (envFile.exists()) {
             envFile.eachLine { line ->
                 if (line.startsWith('KEYSTORE_PASSWORD=')) {
@@ -112,18 +121,18 @@ tasks.named('jar') {
                 }
             }
         }
-        
+
         // Fall back to environment variable or system property if .env not found
         if (!keystorePassword) {
             keystorePassword = System.getenv('KEYSTORE_PASSWORD') ?: System.getProperty('KEYSTORE_PASSWORD')
         }
-        
+
         ant.signjar(
             jar: archiveFile.get().asFile,
             alias: 'handshaker',
             storepass: keystorePassword,
             keypass: keystorePassword,
-            keystore: "${keystoreDir}/.Integrity/keystore.jks",
+            keystore: keystoreFile.absolutePath,
             preservelastmodified: 'true',
             verbose: 'true'
         )

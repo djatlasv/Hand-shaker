@@ -105,41 +105,41 @@ afterEvaluate {
         }
     }
 
-    tasks.register('signFabricJar', Exec) {
-        group = 'build'
-        description = 'Signs the remapped Fabric client JAR.'
-        dependsOn(tasks.named('remapJar'))
+    def keystoreFile = rootProject.file('.Integrity/keystore.jks')
+    if (keystoreFile.exists()) {
+        tasks.register('signFabricJar', Exec) {
+            group = 'build'
+            description = 'Signs the remapped Fabric client JAR.'
+            dependsOn(tasks.named('remapJar'))
 
-        def remappedJarProvider = tasks.named('remapJar').flatMap { it.outputs.files.elements.map { fs -> fs.first().asFile } }
-        def signedJar = layout.buildDirectory.file("libs/${rootProject.archives_base_name}-fabric-${rootProject.version}-universal-s.jar")
+            def remappedJarProvider = tasks.named('remapJar').flatMap { it.outputs.files.elements.map { fs -> fs.first().asFile } }
+            def signedJar = layout.buildDirectory.file("libs/${rootProject.archives_base_name}-fabric-${rootProject.version}-universal-s.jar")
 
-        inputs.file(remappedJarProvider)
-        inputs.file(rootProject.file('.Integrity/keystore.jks'))
-        outputs.file(signedJar)
+            inputs.file(remappedJarProvider)
+            inputs.file(keystoreFile)
+            outputs.file(signedJar)
 
-        executable = 'jarsigner'
+            executable = 'jarsigner'
 
-        doFirst {
-            def jarToSign = remappedJarProvider.get()
-            if (rootProject.file('.Integrity/keystore.jks').exists()) {
+            doFirst {
+                def jarToSign = remappedJarProvider.get()
                 println "--> Signing JAR: ${jarToSign.name}"
                 def keystorePassword = System.getenv('KEYSTORE_PASSWORD') ?: System.getProperty('KEYSTORE_PASSWORD') ?: 'password'
                 args = [
-                    '-keystore', rootProject.file('.Integrity/keystore.jks').absolutePath,
+                    '-keystore', keystoreFile.absolutePath,
                     '-storepass', keystorePassword,
                     '-signedjar', signedJar.get().asFile.absolutePath,
                     jarToSign.absolutePath,
                     'handshaker'
                 ]
-            } else {
-                println "--> Keystore not found in Integrity/keystore.jks. Skipping signing."
-                enabled = false
             }
         }
-    }
 
-    tasks.named('assemble').configure {
-        dependsOn('signFabricJar')
+        tasks.named('assemble').configure {
+            dependsOn('signFabricJar')
+        }
+    } else {
+        println "--> Keystore not found. Skipping JAR signing for fabric:1.21.10."
     }
 }
 

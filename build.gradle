@@ -7,42 +7,47 @@ group = maven_group
 
 tasks.register('copyCert') {
     doLast {
+        def certFile = file('.Integrity/public.cer')
+        if (!certFile.exists()) {
+            println "--> public.cer not found. Skipping cert copy."
+            return
+        }
 
         if (findProject(':paper') != null) {
             copy {
-                from '.Integrity/public.cer'
+                from certFile
                 into 'paper/src/main/resources'
             }
         }
 
         if (findProject(':neoforge:1.21.10') != null) {
             copy {
-                from '.Integrity/public.cer'
+                from certFile
                 into 'neoforge/1.21.10/src/main/resources'
             }
         }
         if (findProject(':neoforge:1.21.11') != null) {
             copy {
-                from '.Integrity/public.cer'
+                from certFile
                 into 'neoforge/1.21.11/src/main/resources'
             }
         }
 
         if (findProject(':velton') != null) {
             copy {
-                from '.Integrity/public.cer'
+                from certFile
                 into 'velton/src/main/resources'
             }
         }
         if (findProject(':fabric:1.21.10') != null) {
             copy {
-                from '.Integrity/public.cer'
+                from certFile
                 into 'fabric/1.21.10/src/main/resources'
             }
         }
         if (findProject(':fabric:1.21.11') != null) {
             copy {
-                from '.Integrity/public.cer'
+                from certFile
                 into 'fabric/1.21.11/src/main/resources'
             }
         }
