@@ -76,13 +76,6 @@ public class HandShakerClientMod {
         }
     }
 
-    private String bytesToHex(byte[] bytes) {
-        StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) {
-            sb.append(String.format("%02x", 0xff & b));
-        }
-        return sb.toString();
-    }
 
     private void sendSignature(ClientPlayerNetworkEvent.LoggingIn event) {
         Optional<String> jarContentHash = computeJarContentHash();

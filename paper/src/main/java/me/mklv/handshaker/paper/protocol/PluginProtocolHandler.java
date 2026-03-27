@@ -324,8 +324,11 @@ public class PluginProtocolHandler {
         if (info == null) {
             if (configManager.getBehavior() == ConfigManager.Behavior.STRICT) {
                 kickPlayer(player, configManager.getNoHandshakeKickMessage());
+                return;
             }
-            return;
+            // VANILLA mode: create empty ClientInfo so required-mod checks still run
+            info = new ClientInfo(false, Collections.emptySet(), false, false, null, null, null, false);
+            clients.put(player.getUniqueId(), info);
         }
 
         // Skip if already checked

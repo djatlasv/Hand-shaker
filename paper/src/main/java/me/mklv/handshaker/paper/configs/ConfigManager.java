@@ -580,11 +580,6 @@ public class ConfigManager {
             return null;
         }
         
-        boolean hasMod = !clientMods.isEmpty();
-        if (behavior == Behavior.VANILLA && !hasMod) {
-            return null;
-        }
-        
         Set<String> missingRequired = new HashSet<>();
         Set<String> blacklistedFound = new HashSet<>();
 
@@ -620,14 +615,9 @@ public class ConfigManager {
         if (player.hasPermission("handshaker.bypass")) {
             return null;
         }
-        
+
         if (HandShakerPlugin.DEBUG) {
             plugin.getLogger().fine("[DEBUG] Checking player " + player.getName() + " - Client mods: " + clientMods);
-        }
-        
-        boolean hasMod = !clientMods.isEmpty();
-        if (behavior == Behavior.VANILLA && !hasMod) {
-            return null;
         }
         
         Set<String> missingRequired = new HashSet<>();
