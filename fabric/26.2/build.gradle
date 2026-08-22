@@ -1,0 +1,143 @@
+plugins {
+	id 'net.fabricmc.fabric-loom'
+	id 'maven-publish'
+}
+
+version = rootProject.mod_version
+group = rootProject.maven_group
+
+base {
+	archivesName = "${rootProject.archives_base_name}-fabric-26.2"
+}
+
+repositories {
+	mavenCentral()
+	maven {
+		name = "Fabric"
+		url = "https://maven.fabricmc.net/"
+	}
+	maven {
+		name = "OpenCollab"
+		url = "https://repo.opencollab.dev/main/"
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
+	
+	compileOnly 'org.geysermc.geyser:api:2.9.0-SNAPSHOT'
+	compileOnly 'org.geysermc.floodgate:api:2.2.4-SNAPSHOT'
+	
+	include implementation('com.h2database:h2:2.2.224')
+	include implementation('com.zaxxer:HikariCP:6.2.1')
+	include implementation('org.slf4j:slf4j-api:2.0.16')
+	include implementation('org.yaml:snakeyaml:2.0')
+	
+	compileOnly "me.lucko:fabric-permissions-api:0.6.1"
+}
+
+tasks.withType(ProcessResources).configureEach {
+    dependsOn rootProject.tasks.named('copyCert')
+}
+
+processResources {
+	def version = rootProject.version
+	def supportedVersions = supported_mc_versions
+	filesMatching("fabric.mod.json") {
+		filter { line ->
+			line.replace('${version}', "${version}-26.2")
+				.replace('${supported_mc_versions}', supportedVersions)
+		}
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+}
+
+java {
+	withSourcesJar()
+
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}
+
+tasks.named('sourcesJar').configure {
+	duplicatesStrategy = 'exclude'
+}
+
+jar {
+	inputs.property "archivesName", project.base.archivesName
+
+	from("LICENSE") {
+		rename { "${it}_${inputs.properties.archivesName}"}
+	}
+}
+
+publishing {
+	publications {
+		create("mavenJava", MavenPublication) {
+			artifactId = rootProject.archives_base_name
+			from components.java
+		}
+	}
+
+	repositories {
+
+	}
+}
+
+afterEvaluate {
+    def envFile = rootProject.file('.env')
+    if (envFile.exists()) {
+        envFile.readLines().each { line ->
+            def (key, value) = line.split('=', 2)
+            if (key && value && !System.getenv(key)) {
+                System.setProperty(key, value)
+            }
+        }
+    }
+
+    def keystoreFile = rootProject.file('.Integrity/keystore.jks')
+    if (keystoreFile.exists()) {
+        tasks.register('signFabricJar', Exec) {
+            group = 'build'
+            description = 'Signs the remapped Fabric client JAR.'
+            dependsOn(tasks.named('jar'))
+
+            def remappedJarProvider = tasks.named('jar').flatMap { it.outputs.files.elements.map { fs -> fs.first().asFile } }
+            def signedJar = layout.buildDirectory.file("libs/${rootProject.archives_base_name}-fabric-${rootProject.version}-21.11-s.jar")
+
+            inputs.file(remappedJarProvider)
+            inputs.file(keystoreFile)
+            outputs.file(signedJar)
+
+            executable = 'jarsigner'
+
+            doFirst {
+                def jarToSign = remappedJarProvider.get()
+                println "--> Signing JAR: ${jarToSign.name}"
+                def keystorePassword = System.getenv('KEYSTORE_PASSWORD') ?: System.getProperty('KEYSTORE_PASSWORD') ?: 'password'
+                args = [
+                    '-keystore', keystoreFile.absolutePath,
+                    '-storepass', keystorePassword,
+                    '-signedjar', signedJar.get().asFile.absolutePath,
+                    jarToSign.absolutePath,
+                    'handshaker'
+                ]
+            }
+        }
+
+        tasks.named('assemble').configure {
+            dependsOn('signFabricJar')
+        }
+    } else {
+        println "--> Keystore not found. Skipping JAR signing for fabric:1.21.11."
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs.add("-Xlint:unchecked")
+}

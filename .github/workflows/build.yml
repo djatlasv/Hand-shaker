@@ -24,6 +24,14 @@ jobs:
           java-version: '21'
           distribution: 'microsoft'
 
+      # MC 26.2 targets require Java 25; this becomes JAVA_HOME while the
+      # JDK 21 above stays available for Gradle toolchain detection
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'microsoft'
+
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
