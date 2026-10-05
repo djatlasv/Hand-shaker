@@ -158,11 +158,11 @@ actions:
 
 ## 🎮 Supported Versions
 
-| Loader       | Versions                | Status      | Versions | Status  |
-| ------------ | ----------------------- | ----------- | -------- | ------- |
-| **Fabric**   | 1.21 - 1.21.10, 1.21.11 | ✅ Supported | N/A      | N/A     |
-| **Paper**    | 1.21+                   | ✅ Supported | N/A      | N/A     |
-| **NeoForge** | 1.21 - 1.21.10, 1.21.11 | ✅ Supported | 1.20.1   | Planned |
+| Loader       | Versions                          | Status       |
+| ------------ | --------------------------------- | ------------ |
+| **Fabric**   | 26.3, 26.2, 1.21.11, 1.21.10      | ✅ Supported |
+| **Paper**    | 1.21+                             | ✅ Supported |
+| **NeoForge** | 26.3, 26.2, 1.21.11, 1.21.10      | ✅ Supported |
 
 ---
 
